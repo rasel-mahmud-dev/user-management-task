@@ -4,8 +4,9 @@ import * as yup from "yup"
 
 import { hashPassword, comparePass } from "../services/hash"
 import prisma from './../db/client';
-import { CustomSession } from "../types";
-
+import { CustomSession, Role } from "../types";
+import generatePinCode from "../utils/generatePinCode";
+import sendMail from "../services/mail";
 
 
 const router = Router()
@@ -24,24 +25,75 @@ router.post("/login", async (req: Request, res: Response, next: NextFunction) =>
         let user = await prisma.user.findFirst({
             where: {
                 email
+            },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                password: true,
+                isVerified: true,
+                resetPin: false,
+                resetPinExpiresAt: false
             }
         })
 
         if (!user) return next("User not registered yet. Please register first")
 
+        let responseMessage = ""
 
         let isMatch = await comparePass(user.password, password)
         if (!isMatch) return next("Password not match")
+
+        // check user verify status. if he is not verified user then send verification code.
+        if (!user.isVerified) {
+
+            let expiredDate = new Date()
+            // OTP expired 30 minutes from creation time
+            expiredDate.setMinutes(expiredDate.getMinutes() + 30)
+
+            let verifyPin = generatePinCode(6)
+
+            // send mail for account verification  
+            let isError = await sendMail({
+                subject: "Account verification OTP Code",
+                to: email,
+                resetPin: verifyPin,
+            })
+
+            // if mail has been send successfully then update user row data
+            if (!isError) {
+                responseMessage = "Account verification OTP code has been send"
+                await prisma.user.update({
+                    where: {
+                        email
+                    },
+                    data: {
+                        resetPin: verifyPin,
+                        resetPinExpiresAt: expiredDate
+                    },
+                })
+            } else {
+                responseMessage = "Account verification OTP code fail to send"
+            }
+        }
+
 
 
         let session = req.session as CustomSession
         session.user = {
             id: user.id,
             email: user.email,
-            role: user.role
+            role: user.role as Role.USER
         }
 
-        res.status(201).json({ ...user, password: "" })
+        res.status(201).json({
+            user: {
+                ...user,
+                password: ""
+            },
+            isSendVerificationCode: !user.isVerified,
+            message: responseMessage
+        })
 
     } catch (ex) {
         next(ex)
@@ -72,20 +124,44 @@ router.post("/registration", async (req: Request, res: Response, next: NextFunct
 
         const hash = await hashPassword(password)
 
+        let verifyPin = generatePinCode(6)
+        // OTP expired 30 minutes from creation time
+        let expiredDate = new Date()
+        expiredDate.setMinutes(expiredDate.getMinutes() + 30)
+
         let newUser = await prisma.user.create({
             data: {
                 name,
                 email,
-                password: hash
+                password: hash,
+                resetPinExpiresAt: expiredDate,
+                isVerified: false,
+                resetPin: verifyPin,
+
             }
         })
         let session = req.session as CustomSession
         session.user = {
             id: newUser.id,
             email: newUser.email,
-            role: newUser.role
+            role: newUser.role as Role.USER
         }
-        res.status(201).json(newUser)
+
+        // send mail for account verification  
+        let isError = await sendMail({
+            subject: "Account verification OTP Code",
+            to: email,
+            resetPin: verifyPin,
+        })
+
+        let responseMessage = isError
+            ? "Account verification mail send fail"
+            : "Check your mail to verify you account process"
+
+        res.status(201).json({
+            user: newUser,
+            message: responseMessage
+        })
 
     } catch (ex) {
         next(ex)
@@ -108,6 +184,174 @@ router.get("/logout", async (req: Request, res: Response, next: NextFunction) =>
     }
 })
 
+
+// after creating user account. this route make user verify via OTP code.
+router.post("/verify-account", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email, pin } = req.body
+
+        const schema = yup.object({
+            email: yup.string().email().required().max(250).label("Email"),
+            pin: yup.string().required().length(6).label("PIN")
+        })
+
+
+
+        await schema.validate({ email, pin: pin })
+
+        let user = await prisma.user.findFirst({
+            where: {
+                email
+            }
+        })
+
+        if (!user) return next("Account not found")
+
+        if (user.isVerified) return res.status(200).json({ message: "This Account already verifiyed" })
+
+        // check otp pin
+        if (user.resetPin !== pin) {
+            return next("Invalid OTP code")
+        }
+
+        // check otp code expire date 
+        let expiredDate = new Date(user.resetPinExpiresAt)
+        if (expiredDate < new Date()) {
+            return next("OTP expried")
+        }
+
+        // now user is verifyed 
+        let result = await prisma.user.update({
+            where: {
+                id: user.id
+            },
+            data: {
+                isVerified: true,
+                resetPin: "000000",
+                resetPinExpiresAt: new Date()
+            },
+        })
+
+
+        if (!result) return next("Account verification fail, please try again")
+
+        res.status(200).json({ message: "Account has been verifiyed" })
+
+    } catch (ex) {
+        next(ex)
+    }
+})
+
+
+// get otp/pin code for reset password via user email 
+router.post("/forgot-password", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email } = req.body
+
+        const schema = yup.object({
+            email: yup.string().email().required().max(250).label("Email")
+        })
+
+        await schema.validate({ email })
+
+        let user = await prisma.user.findFirst({
+            where: {
+                email
+            }
+        })
+
+        if (!user) return next("User not found with this email")
+
+        // send mail for password reset opt code.
+        let resetPin = generatePinCode(6)
+
+        let isError = await sendMail({
+            to: email,
+            resetPin,
+        })
+
+        if (isError) return next("OTP Code send fail, please try again");
+
+        // OTP expired 30 minutes from creation time
+        let expiredDate = new Date()
+        expiredDate.setMinutes(expiredDate.getMinutes() + 30)
+
+        await prisma.user.update({
+            where: {
+                email
+            },
+            data: {
+                resetPin,
+                resetPinExpiresAt: expiredDate
+            },
+
+        })
+
+        res.status(201).json({ message: "Please check your email to reset password" })
+
+    } catch (ex) {
+        next("Password reset OTP Code generate fail, please try again")
+    }
+})
+
+
+// reset password using otp pin code
+router.post("/reset-password", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email, pin, newPassword, confirmPassword } = req.body
+
+        const schema = yup.object({
+            newPassword: yup.string().required().max(250).label("Email"),
+            confirmPassword: yup.string()
+                .label("Confirm Passord")
+                .required().oneOf([yup.ref("newPassword")], "ConfirmPassword should be match"),
+            email: yup.string().email().required().max(250).label("Email"),
+            pin: yup.string().required().length(6).label("PIN")
+        })
+
+        await schema.validate({ email, pin: pin, newPassword, confirmPassword })
+
+        let user = await prisma.user.findFirst({
+            where: {
+                email
+            }
+        })
+
+        if (!user) return next("Account not found")
+
+        // check otp pin
+        if (user.resetPin !== pin) {
+            return next("Invalid OTP code")
+        }
+
+        // check otp code expire date 
+        let expiredDate = new Date(user.resetPinExpiresAt)
+        if (expiredDate < new Date()) {
+            return next("OTP expired")
+        }
+
+        let hash = await hashPassword(newPassword)
+        // now reset new password
+        let result = await prisma.user.update({
+            where: {
+                id: user.id,
+            },
+            data: {
+                password: hash,
+                resetPin: "000000",
+                resetPinExpiresAt: new Date()
+            },
+        })
+
+
+        if (!result) return next("Password reset fail, please try again")
+
+        res.status(201).json({ message: "Your password has been change, please login with new passord" })
+
+    } catch (ex) {
+        next(ex)
+    }
+})
 
 
 

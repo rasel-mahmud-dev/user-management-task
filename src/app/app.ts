@@ -3,7 +3,9 @@ import express, { Request, Response, NextFunction } from "express"
 import sessions from "express-session"
 import cookieParser from "cookie-parser"
 
-require("dotenv").config()
+require("dotenv").config({
+    path: '.env.dev'
+})
 
 import routes from "../routes"
 
@@ -14,7 +16,7 @@ app.use(express.json())
 
 app.use(sessions({
     secret: process.env.SESSION_SECRET as string,
-    name: `daffyduck`,
+    name: `prisma-task`, // cookie name
     resave: false,
     saveUninitialized: false,
     cookie: {
