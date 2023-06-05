@@ -22,6 +22,15 @@ model User {
   resetPinExpiresAt DateTime
 }
 
+model Permission {
+  id     Int     @id @default(autoincrement())
+  role   Role    @unique
+  read   Boolean @default(true)
+  create Boolean @default(false)
+  update Boolean @default(false)
+  delete Boolean @default(false)
+}
+
 enum Role {
   USER
   ADMIN
