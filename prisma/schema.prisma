@@ -15,5 +15,6 @@ model User {
   name      String
   email     String
   password  String
+  role      String   @default("User")
   createdAt DateTime @default(now())
 }
