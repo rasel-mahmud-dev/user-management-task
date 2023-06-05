@@ -1,5 +1,17 @@
+import session from 'express-session';
+
 export enum Role {
-    User = "User",
-    Admin = "Admin",
-    Support = "Support"
+    USER = "USER",
+    ADMIN = "  ADMIN",
+    SUPPORT = "  SUPPORT"
+}
+
+
+// Custom session type
+export interface CustomSession extends session.Session {
+    user: {
+        id: number;
+        email: string;
+        role: Role;
+    };
 }

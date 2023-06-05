@@ -3,7 +3,7 @@ import { isAuthenticate } from "../middleware/auth"
 const router = Router()
 
 router.post("/delete", isAuthenticate, (req, res, next) => {
-    console.log(req.session)
+    res.send(req.session)
 })
 
 

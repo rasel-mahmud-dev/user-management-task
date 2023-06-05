@@ -12,7 +12,6 @@ const app = express()
 app.use(express.json())
 
 
-const oneDay = 1000 * 60 * 60 * 24;
 app.use(sessions({
     secret: process.env.SESSION_SECRET as string,
     name: `daffyduck`,
@@ -20,7 +19,7 @@ app.use(sessions({
     saveUninitialized: false,
     cookie: {
         secure: false, // This will only work if you have https enabled!
-        maxAge: 60000 // 1 min
+        maxAge: 10000 // 10 sec
     }
 }));
 
