@@ -1,4 +1,5 @@
 import session from 'express-session';
+import {Request} from "express";
 
 export enum Role {
     USER = "USER",
@@ -22,4 +23,10 @@ export type Permission = {
     create: boolean
     update: boolean
     delete: boolean
+}
+
+
+
+export interface RequestWithCSRF extends Request {
+    csrfToken?: ()=> string
 }
