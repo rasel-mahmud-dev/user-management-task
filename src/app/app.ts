@@ -46,6 +46,7 @@ app.use(sessions({
 }));
 
 
+//NOTE: You can disable CSRF protection for REST API to get better performance
 
 // Set up CSRF protection middleware
 const CSRFTOKEN_SECRET = "123456789iamasecret987654321look" // should be 32 character
