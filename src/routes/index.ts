@@ -8,7 +8,7 @@ import { requiredAdmin } from "../middleware/auth"
 const router = Router()
 
 router.use("/api/auth", authRoute)
-router.use("/api/user", userRoute)
+router.use("/api/users", userRoute)
 router.use("/api/permission", requiredAdmin, permissionRoute)
 
 

@@ -2,8 +2,8 @@ import session from 'express-session';
 
 export enum Role {
     USER = "USER",
-    ADMIN = "  ADMIN",
-    SUPPORT = "  SUPPORT"
+    ADMIN = "ADMIN",
+    SUPPORT = "SUPPORT"
 }
 
 
@@ -14,4 +14,11 @@ export interface CustomSession extends session.Session {
         email: string;
         role: Role;
     };
+}
+
+export type Permission = {
+    read: boolean
+    create: boolean
+    update: boolean
+    delete: boolean
 }

@@ -1,7 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express"
 
 
-import { forgotPasword, logOut, loginUser, registerUser, resetPassword, verifyUser } from "../controllers/authController";
+import { forgotPasword, logOut, loginUser, registerUser, bulkRegisterUser, resetPassword, verifyUser } from "../controllers/authController";
+import { requiredAdmin } from "../middleware/auth";
 
 
 const router = Router()
@@ -11,6 +12,11 @@ router.post("/login", loginUser)
 
 // user registration
 router.post("/registration", registerUser)
+
+
+// bulk user registration for admin role
+router.post("/bulk-registration", requiredAdmin, bulkRegisterUser)
+
 
 // logout user
 router.get("/logout", logOut)

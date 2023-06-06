@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express"
-import { CustomSession, Role } from "../types";
+import {CustomSession, Role} from "../types";
+
 
 export async function requiredAuth(req: Request, res: Response, next: NextFunction) {
     let session = req.session as CustomSession
@@ -14,7 +15,6 @@ export async function requiredAuth(req: Request, res: Response, next: NextFuncti
 
 export async function requiredAdmin(req: Request, res: Response, next: NextFunction) {
     let session = req.session as CustomSession
-    console.log(session)
     if (!session.user) {
         return next("Please login")
     }
@@ -24,4 +24,5 @@ export async function requiredAdmin(req: Request, res: Response, next: NextFunct
 
     next()
 }
+
 

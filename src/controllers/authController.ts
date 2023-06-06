@@ -166,6 +166,47 @@ export async function registerUser(req: Request, res: Response, next: NextFuncti
 }
 
 
+// only admin can perform this action
+export async function bulkRegisterUser(req: Request, res: Response, next: NextFunction) {
+    try {
+
+        const { users = [] } = req.body
+
+        const schema = yup.array().of(
+            yup.object().shape({
+                name: yup.string().required().max(80).label("Name"),
+                email: yup.string().email().required().max(250).label("Email"),
+                password: yup.string().required().max(500).label("Password")
+            })
+        );
+
+        await schema.validate(users)
+
+        let result = await prisma.user.createMany({
+            data: users.map((user: { name: string, email: string, password: string }) => ({
+                name: user.name,
+                email: user.email,
+                password: user.password,
+                isVerified: false,
+                resetPin: "000000",
+                resetPinExpiresAt: new Date()
+            }))
+        })
+
+        if (result.count > 0) {
+            res.status(201).json({ message: "Bulk import success" })
+        }
+
+    } catch (ex: any) {
+        let message = ""
+        if (ex.code === 'P2002' && ex.meta.target === "User_email_key") {
+            message = "One Of email already exist"
+        }
+        next(message ? message : ex)
+    }
+}
+
+
 export async function verifyUser(req: Request, res: Response, next: NextFunction) {
     try {
         const { email, pin } = req.body

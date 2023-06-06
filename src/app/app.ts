@@ -1,7 +1,5 @@
-
 import express, { Request, Response, NextFunction } from "express"
 import sessions from "express-session"
-import cookieParser from "cookie-parser"
 
 require("dotenv").config({
     path: '.env.dev'
@@ -21,13 +19,10 @@ app.use(sessions({
     saveUninitialized: false,
     cookie: {
         secure: false, // This will only work if you have https enabled!
-        maxAge: 10000 // 10 sec
+        maxAge: (1000 * 3600) * 24 // 1days
     }
 }));
 
-
-// cookie parser middleware
-// app.use(cookieParser());
 
 app.use(routes)
 
