@@ -13,6 +13,7 @@ export interface CustomSession extends session.Session {
         id: number;
         email: string;
         role: Role;
+        isVerified: boolean;
     };
 }
 

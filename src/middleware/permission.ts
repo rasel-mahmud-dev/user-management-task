@@ -12,6 +12,9 @@ export function checkPermission(permission: Partial<Permission>){
             return next()
         }
 
+        // also check account verification
+        // if(!session.user.isVerified) return next("You has not been verified.")
+
         let rolePermission = await prisma.permission.findFirst({
             where: {
                 role: session.user.role

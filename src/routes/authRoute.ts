@@ -1,8 +1,17 @@
 import { Router, Request, Response, NextFunction } from "express"
 
 
-import { forgotPasword, logOut, loginUser, registerUser, bulkRegisterUser, resetPassword, verifyUser } from "../controllers/authController";
-import { requiredAdmin } from "../middleware/auth";
+import {
+    forgotPasword,
+    logOut,
+    loginUser,
+    registerUser,
+    bulkRegisterUser,
+    resetPassword,
+    verifyUser,
+    getAuthInfo
+} from "../controllers/authController";
+import {requiredAdmin, requiredAuth} from "../middleware/auth";
 
 
 const router = Router()
@@ -10,8 +19,13 @@ const router = Router()
 // login 
 router.post("/login", loginUser)
 
+
 // user registration
 router.post("/registration", registerUser)
+
+
+// user registration
+router.get("/auth-info", requiredAuth, getAuthInfo)
 
 
 // bulk user registration for admin role

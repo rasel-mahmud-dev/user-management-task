@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from "express"
+import {  Request, Response, NextFunction } from "express"
 import * as yup from "yup"
 
 import { hashPassword, comparePass } from "../services/hash"
@@ -74,12 +74,11 @@ export async function loginUser(req: Request, res: Response, next: NextFunction)
             }
         }
 
-
-
         let session = req.session as CustomSession
         session.user = {
             id: user.id,
             email: user.email,
+            isVerified: user.isVerified,
             role: user.role as Role.USER
         }
 
@@ -141,6 +140,7 @@ export async function registerUser(req: Request, res: Response, next: NextFuncti
         session.user = {
             id: newUser.id,
             email: newUser.email,
+            isVerified: newUser.isVerified,
             role: newUser.role as Role.USER
         }
 
@@ -164,6 +164,39 @@ export async function registerUser(req: Request, res: Response, next: NextFuncti
         next(ex)
     }
 }
+
+
+
+export async function getAuthInfo(req: Request, res: Response, next: NextFunction) {
+    try {
+
+        const session  = req.session as CustomSession
+
+        let user = await prisma.user.findFirst({
+            where: {
+                id: session.user.id
+            },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                password: false,
+                isVerified: true,
+                resetPin: false,
+                resetPinExpiresAt: false
+            }
+        })
+
+        if (!user) return next("User not registered yet. Please register first")
+        res.status(201).json({
+            user: user
+        })
+
+    } catch (ex) {
+        next(ex)
+    }
+}
+
 
 
 // only admin can perform this action
