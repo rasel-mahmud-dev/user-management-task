@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from "express"
 import sessions from "express-session"
-import cors from "cors"
+import cors, {CorsOptions} from "cors"
 import cookieParser from "cookie-parser";
 const csurf = require("tiny-csrf");
 
@@ -16,11 +16,21 @@ const app = express()
 
 app.use(express.json())
 
-app.use(cors({}))
 
 
+const allowedOrigin = [process.env.FRONTEND as string, "http://localhost"]
+
+// CORS options
+const corsOptions: CorsOptions = {
+    origin: allowedOrigin,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
+// CORS middleware
+app.use(cors(corsOptions));
 
 
+// cookie parser middleware
 app.use(cookieParser(process.env.SESSION_SECRET as string))
 
 
